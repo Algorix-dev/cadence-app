@@ -4,10 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
+// TIP: this order is the approved information architecture — Today first
+// (what's happening right now), then the three planning surfaces, then
+// Settings last. Add a new tab by adding one line here; Sidebar highlights
+// it automatically once its route exists.
 const links = [
-  { href: "/dashboard", label: "Your week" },
-  { href: "/dashboard/recurring", label: "What repeats" },
+  { href: "/dashboard", label: "Today" },
   { href: "/dashboard/tasks", label: "Tasks" },
+  { href: "/dashboard/calendar", label: "Calendar" },
+  { href: "/dashboard/recurring", label: "Timetable" },
+  { href: "/dashboard/events", label: "Events" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 

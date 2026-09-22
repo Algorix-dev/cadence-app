@@ -22,6 +22,7 @@ export default function RecurringPage() {
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -37,27 +38,52 @@ export default function RecurringPage() {
     load();
   }, []);
 
-  async function addItem(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setTitle("");
+    setDay("1");
+    setStart("09:00");
+    setEnd("10:00");
+  }
+
+  function startEdit(item: Recurring) {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setDay(String(item.day_of_week));
+    setStart(item.start_time.slice(0, 5));
+    setEnd(item.end_time.slice(0, 5));
+  }
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const color = PALETTE[items.length % PALETTE.length];
-    await supabase.from("recurring_events").insert({
-      user_id: user.id,
-      title,
-      day_of_week: Number(day),
-      start_time: start,
-      end_time: end,
-      color,
-    });
-    setTitle("");
+
+    if (editingId) {
+      await supabase
+        .from("recurring_events")
+        .update({ title, day_of_week: Number(day), start_time: start, end_time: end })
+        .eq("id", editingId);
+    } else {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const color = PALETTE[items.length % PALETTE.length];
+      await supabase.from("recurring_events").insert({
+        user_id: user.id,
+        title,
+        day_of_week: Number(day),
+        start_time: start,
+        end_time: end,
+        color,
+      });
+    }
+    resetForm();
     load();
   }
 
   async function removeItem(id: string) {
+    if (editingId === id) resetForm();
     await supabase.from("recurring_events").delete().eq("id", id);
     load();
   }
@@ -67,7 +93,7 @@ export default function RecurringPage() {
       <h1 className="text-2xl font-display font-bold text-cream">What repeats</h1>
       <p className="mt-1 text-sm text-cream/60">Classes, shifts, gym days — set them up once.</p>
 
-      <form onSubmit={addItem} className="surface mt-6 px-5 py-5 flex flex-wrap gap-3 items-end">
+      <form onSubmit={submit} className="surface mt-6 px-5 py-5 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs text-cream/50 mb-1">Title</label>
           <input
@@ -79,11 +105,7 @@ export default function RecurringPage() {
         </div>
         <div>
           <label className="block text-xs text-cream/50 mb-1">Day</label>
-          <select
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-            className="field"
-          >
+          <select value={day} onChange={(e) => setDay(e.target.value)} className="field">
             {DAYS.map((d, i) => (
               <option key={i} value={i}>
                 {d}
@@ -93,25 +115,20 @@ export default function RecurringPage() {
         </div>
         <div>
           <label className="block text-xs text-cream/50 mb-1">Start</label>
-          <input
-            type="time"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            className="field"
-          />
+          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="field" />
         </div>
         <div>
           <label className="block text-xs text-cream/50 mb-1">End</label>
-          <input
-            type="time"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className="field"
-          />
+          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="field" />
         </div>
         <button type="submit" className="btn-solid">
-          Add
+          {editingId ? "Save changes" : "Add"}
         </button>
+        {editingId && (
+          <button type="button" onClick={resetForm} className="btn-ghost">
+            Cancel
+          </button>
+        )}
       </form>
 
       {loading ? (
@@ -130,7 +147,9 @@ export default function RecurringPage() {
                   {dayItems.map((it) => (
                     <li
                       key={it.id}
-                      className="flex items-center justify-between rounded-xl bg-ink-soft/60 border border-cream/10 px-3.5 py-2.5 transition hover:border-marigold/30"
+                      className={`flex items-center justify-between rounded-xl bg-ink-soft/60 border px-3.5 py-2.5 transition hover:border-marigold/30 ${
+                        editingId === it.id ? "border-marigold/50" : "border-cream/10"
+                      }`}
                     >
                       <span className="flex items-center gap-2.5 text-sm text-cream">
                         <span className="w-2 h-2 rounded-full" style={{ background: it.color }} />
@@ -140,6 +159,9 @@ export default function RecurringPage() {
                         <span className="text-xs text-cream/50 tabular-nums">
                           {it.start_time.slice(0, 5)}–{it.end_time.slice(0, 5)}
                         </span>
+                        <button onClick={() => startEdit(it)} className="text-xs text-cream/40 hover:text-marigold transition">
+                          Edit
+                        </button>
                         <button onClick={() => removeItem(it.id)} className="text-xs text-cream/40 hover:text-coral transition">
                           Remove
                         </button>

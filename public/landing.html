@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadence — Give your week a rhythm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --marigold:#FFC94D;
+    --cream:#FFF8E7;
+    --violet:#6B4EFF;
+    --violet-dim:#5A3FE0;
+    --ink:#1A1730;
+    --ink-soft:#241f3f;
+    --white:#FFFFFF;
+    --coral:#FF8A5B;
+    --font-display:'Baloo 2', system-ui, sans-serif;
+    --font-body:'Manrope', system-ui, sans-serif;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--font-body);
+    background:var(--ink);
+    color:var(--cream);
+    overflow-x:hidden;
+  }
+  img,svg{display:block; max-width:100%;}
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit; cursor:pointer; border:none;}
+
+  :focus-visible{outline:3px solid var(--marigold); outline-offset:3px;}
+
+  h1,h2,h3{font-family:var(--font-display); line-height:1.05; letter-spacing:-0.01em;}
+
+  .wrap{max-width:1200px; margin:0 auto; padding:0 48px;}
+  @media (max-width:720px){ .wrap{padding:0 22px;} }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:15px 30px; border-radius:999px;
+    font-weight:700; font-size:16px;
+    transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease, filter .22s ease;
+  }
+  .btn-primary{ background:var(--violet); color:var(--white); box-shadow:0 6px 20px rgba(107,78,255,.35);}
+  .btn-primary:hover{ transform:translateY(-3px) scale(1.03); box-shadow:0 10px 28px rgba(107,78,255,.5);}
+  .btn-marigold{ background:var(--marigold); color:var(--ink); box-shadow:0 6px 20px rgba(255,201,77,.35);}
+  .btn-marigold:hover{ transform:translateY(-3px) scale(1.03); box-shadow:0 10px 28px rgba(255,201,77,.5);}
+  .btn-ghost{ background:transparent; color:var(--cream); border:2px solid rgba(255,248,231,.3);}
+  .btn-ghost:hover{ background:var(--cream); color:var(--ink); border-color:var(--cream);}
+
+  /* ---------- Nav ---------- */
+  nav{ padding:32px 0 0;}
+  .nav-row{ display:flex; align-items:center; justify-content:space-between; }
+  .logo{ display:flex; align-items:center; gap:12px; font-family:var(--font-display); font-weight:700; font-size:22px; color:var(--cream);}
+  .logo-mark{
+    width:40px; height:40px; border-radius:12px;
+    background:var(--marigold);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .logo-mark span{ width:16px; height:16px; border-radius:5px; background:var(--violet);}
+
+  .float-cta{
+    position:fixed; right:28px; top:28px; z-index:40;
+    opacity:0; transform:translateY(-16px) scale(.9); pointer-events:none;
+    transition:opacity .3s ease, transform .3s ease;
+  }
+  .float-cta.show{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto;}
+
+  /* ---------- Hero ---------- */
+  .hero{ padding:64px 0 40px; }
+  .hero-grid{
+    display:grid; grid-template-columns:1.05fr 1fr; gap:56px; align-items:center;
+  }
+  @media (max-width:960px){ .hero-grid{ grid-template-columns:1fr; } }
+
+  .hero h1{ font-size:clamp(40px,5.4vw,64px); font-weight:800; color:var(--cream); }
+  .hero h1 em{ font-style:normal; color:var(--violet); background:linear-gradient(180deg, transparent 62%, rgba(107,78,255,.28) 62%); }
+  .hero p.lede{ margin-top:22px; max-width:46ch; font-size:18px; line-height:1.6; color:rgba(255,248,231,.75); }
+  .hero-ctas{ margin-top:34px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .hero-note{ font-size:14px; color:rgba(255,248,231,.55); }
+
+  /* ---------- Hero visual: the fishing pond ---------- */
+  .pond{
+    position:relative;
+    height:460px;
+    border-radius:28px;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 78% 20%, rgba(255,201,77,.55), transparent 55%),
+      linear-gradient(160deg, #241f3f 0%, #1A1730 60%);
+    border:1px solid rgba(255,248,231,.08);
+  }
+  @media (max-width:960px){ .pond{ height:400px; } }
+
+  .water{
+    position:absolute; left:0; right:0; bottom:0; top:22%;
+    background:linear-gradient(180deg, rgba(107,78,255,.28) 0%, rgba(50,36,110,.55) 100%);
+    backdrop-filter:blur(0px);
+  }
+  .water::before{
+    content:''; position:absolute; top:-14px; left:0; right:0; height:28px;
+    background:
+      radial-gradient(circle at 10px 14px, transparent 12px, rgba(107,78,255,.28) 13px) repeat-x,
+      radial-gradient(circle at 10px 14px, transparent 12px, rgba(107,78,255,.28) 13px) repeat-x;
+    background-size:28px 28px;
+    opacity:.9;
+    animation:waterdrift 6s linear infinite;
+  }
+  @keyframes waterdrift{ from{ background-position:0 0; } to{ background-position:-56px 0; } }
+
+  .clock-badge{
+    position:absolute; top:18px; right:18px; z-index:5;
+    display:flex; align-items:center; gap:9px;
+    background:var(--ink); border:1px solid rgba(255,248,231,.15);
+    padding:10px 16px; border-radius:14px;
+    box-shadow:0 8px 22px rgba(0,0,0,.35);
+  }
+  .clock-dot{ width:8px; height:8px; border-radius:50%; background:var(--marigold); }
+  .clock-badge time{
+    font-variant-numeric:tabular-nums; font-weight:700; font-size:16px; color:var(--cream);
+    min-width:52px; text-align:left;
+  }
+  .clock-badge.settled{ animation:clockpop .4s ease; }
+  @keyframes clockpop{ 0%{ transform:scale(1);} 40%{ transform:scale(1.12); border-color:var(--marigold);} 100%{ transform:scale(1);} }
+
+  .chip{
+    position:absolute; z-index:3; top:0; left:0;
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 16px; border-radius:999px;
+    background:var(--ink-soft); color:var(--cream);
+    font-weight:700; font-size:14px; white-space:nowrap;
+    filter:blur(3px); opacity:.32; transform:translate(-50%,-50%) scale(.9);
+    transition:filter .35s ease, opacity .35s ease, box-shadow .35s ease, background .35s ease;
+    will-change:left, top;
+  }
+  .chip .chip-dot{ width:7px; height:7px; border-radius:50%; background:var(--coral); flex:none; }
+  .chip.caught{ filter:blur(0); opacity:1; box-shadow:0 10px 26px rgba(0,0,0,.35); background:var(--violet); }
+  .chip.caught .chip-dot{ background:var(--marigold); }
+  .chip.near-cursor{
+    filter:blur(0); opacity:.9;
+    box-shadow:0 0 0 2px rgba(255,201,77,.55), 0 8px 20px rgba(0,0,0,.3);
+  }
+  .chip.near-cursor .chip-dot{ background:var(--marigold); }
+
+  .hook{
+    position:absolute; z-index:6; width:14px; height:14px; border-radius:50%;
+    background:var(--marigold); box-shadow:0 0 0 3px rgba(255,201,77,.25);
+    transform:translate(-50%,-50%);
+    opacity:0; pointer-events:none;
+    transition:left .55s cubic-bezier(.5,0,.2,1), top .55s cubic-bezier(.5,0,.2,1), opacity .2s ease;
+  }
+  .hook::before{
+    content:''; position:absolute; left:50%; bottom:100%; width:2px; height:240px;
+    background:linear-gradient(rgba(255,248,231,.5), transparent);
+    transform:translateX(-50%);
+  }
+
+  .tick{
+    position:absolute; z-index:7; width:26px; height:26px; border-radius:50%;
+    background:var(--marigold); color:var(--ink); font-weight:800; font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transform:translate(-50%,-50%) scale(.5);
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .tick.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+
+  .chip.fly-out{
+    transition:transform .6s cubic-bezier(.6,-0.2,.8,.2), opacity .6s ease;
+    opacity:0 !important;
+  }
+
+  /* ---------- Problem section ---------- */
+  .problem{ padding:110px 0; }
+  .problem-grid{ display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:start; }
+  @media (max-width:860px){ .problem-grid{ grid-template-columns:1fr; gap:40px; } }
+  .problem h2{ font-size:clamp(30px,4vw,44px); color:var(--cream); font-weight:700; }
+  .problem p.lede{ margin-top:18px; max-width:44ch; color:rgba(255,248,231,.7); font-size:17px; line-height:1.65; }
+
+  .stack-card{ background:var(--ink-soft); border:1px solid rgba(255,248,231,.08); border-radius:20px; padding:8px 28px; }
+  .stack-row{ display:flex; align-items:center; gap:14px; padding:20px 0; border-bottom:1px solid rgba(255,248,231,.08); font-size:16px; color:rgba(255,248,231,.75); }
+  .stack-row:last-child{ border-bottom:none; color:var(--violet); font-weight:700; }
+  .stack-row .rowdot{ width:8px; height:8px; border-radius:50%; background:rgba(255,248,231,.35); flex:none; }
+  .stack-row:last-child .rowdot{ background:var(--violet); }
+
+  /* ---------- Pinned feature section ---------- */
+  /* The intro and each feature "slide" fill the entire pinned viewport —
+     no small boxed card floating in empty space. The intro overlays the
+     stage and fades out once; each stage then takes the full screen in turn. */
+  .feature-scroll{ position:relative; height:520vh; }
+  .feature-pin{ position:sticky; top:0; height:100vh; overflow:hidden; }
+
+  .feature-intro{
+    position:absolute; inset:0; z-index:5;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:24px;
+  }
+  .feature-intro h2{ font-size:clamp(28px,4.4vw,46px); color:var(--cream); }
+  .feature-intro p{ margin-top:14px; color:rgba(255,248,231,.6); font-size:16px; }
+
+  .feature-stage{ position:absolute; inset:0; z-index:1; }
+  .feature-bg{
+    position:absolute; inset:0; opacity:0; transition:opacity .6s ease;
+  }
+  .feature-bg.active{ opacity:1; }
+  .feature-blob{
+    position:absolute; width:560px; height:560px; border-radius:50%;
+    filter:blur(90px); opacity:.5;
+    transition:left 1.1s ease, top 1.1s ease, background 1.1s ease;
+  }
+
+  .feature-cards{ position:absolute; inset:0; }
+  .feature-card{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px 24px;
+    opacity:0; pointer-events:none;
+    transition:opacity .6s ease;
+  }
+  .feature-card.active{ opacity:1; pointer-events:auto; }
+  .feature-card .feature-inner{ max-width:600px; }
+  .feature-icon{
+    width:72px; height:72px; border-radius:18px; margin:0 auto 30px;
+    display:flex; align-items:center; justify-content:center; font-size:30px;
+  }
+  .feature-card h3{ font-size:clamp(30px,5vw,52px); color:var(--cream); font-weight:700; }
+  .feature-card p{ margin:18px auto 0; max-width:42ch; color:rgba(255,248,231,.68); line-height:1.75; font-size:18px; }
+
+  .feature-dots{ position:absolute; z-index:6; left:50%; bottom:40px; transform:translateX(-50%); display:flex; gap:8px; }
+  .feature-dots span{ width:8px; height:8px; border-radius:50%; background:rgba(255,248,231,.28); transition:background .3s ease, width .3s ease; }
+  .feature-dots span.active{ background:var(--marigold); width:22px; border-radius:5px; }
+
+  /* ---------- Audience ---------- */
+  .audience{ padding:120px 0 90px; text-align:center; }
+  .audience.reveal{ opacity:0; transform:translateY(28px); transition:opacity .9s ease, transform .9s ease; }
+  .audience.reveal.visible{ opacity:1; transform:translateY(0); }
+  .audience h2{ font-size:clamp(28px,4vw,42px); color:var(--cream); }
+  .audience p{ margin:16px auto 0; max-width:52ch; color:rgba(255,248,231,.62); font-size:16px; line-height:1.6; }
+  .chips-row{ margin-top:40px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap; }
+  .a-chip{
+    padding:14px 26px; border-radius:999px; font-weight:700; font-size:15px;
+    border:2px solid rgba(255,248,231,.18); color:var(--cream); background:transparent;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1), border-color .25s ease, background .25s ease;
+  }
+  .a-chip:hover{ transform:translateY(-5px); }
+  .a-chip.c1{ border-color:var(--marigold); }
+  .a-chip.c2{ border-color:var(--violet); }
+  .a-chip.c3{ border-color:var(--coral); }
+  .a-chip:hover{ background:rgba(255,248,231,.06); }
+
+  /* ---------- Final CTA ---------- */
+  .final-cta{ padding:0 24px 110px; }
+  .final-cta-inner{
+    max-width:1100px; margin:0 auto; border-radius:32px; padding:80px 40px;
+    text-align:center;
+    background:linear-gradient(120deg, var(--violet) 0%, #9C8CFF 100%);
+  }
+  .final-cta-inner h2{ font-size:clamp(30px,4.6vw,50px); color:var(--white); }
+  .final-cta-inner p{ margin-top:14px; color:rgba(255,255,255,.85); font-size:16px; }
+  .final-cta-inner .btn{ margin-top:30px; }
+
+  /* ---------- Footer ---------- */
+  footer{ background:#120F24; padding:80px 0 0; position:relative; overflow:hidden; }
+  footer::before{
+    content:''; position:absolute; top:-120px; right:-80px; width:360px; height:360px;
+    background:radial-gradient(circle, rgba(107,78,255,.35), transparent 70%); filter:blur(40px);
+  }
+  .footer-top{ position:relative; display:flex; justify-content:space-between; align-items:flex-start; gap:40px; flex-wrap:wrap; padding-bottom:56px; border-bottom:1px solid rgba(255,248,231,.1); }
+  .footer-brand .logo{ color:var(--cream); }
+  .footer-brand p{ margin-top:14px; max-width:32ch; color:rgba(255,248,231,.55); font-size:14.5px; line-height:1.6; }
+
+  .how-it-works{ display:flex; gap:26px; flex-wrap:wrap; max-width:560px; }
+  .step{ flex:1 1 110px; min-width:110px; }
+  .step-num{
+    width:34px; height:34px; border-radius:10px; background:rgba(255,248,231,.08);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:rgba(255,248,231,.5);
+    transition:background .3s ease, color .3s ease;
+  }
+  .step.active .step-num{ background:var(--marigold); color:var(--ink); }
+  .step-label{ margin-top:12px; font-size:13.5px; color:rgba(255,248,231,.55); line-height:1.4; }
+  .step.active .step-label{ color:var(--cream); }
+  .step-line{ height:3px; background:rgba(255,248,231,.1); border-radius:3px; margin-top:14px; overflow:hidden; }
+  .step-line i{ display:block; height:100%; width:0%; background:var(--marigold); }
+  /* Fill width is driven entirely by inline styles set in JS (see setLine())
+     so the bar can be forced back to 0% and reliably re-animate on every lap. */
+
+  .footer-bottom{ position:relative; display:flex; justify-content:space-between; align-items:center; padding:26px 0 34px; font-size:13.5px; color:rgba(255,248,231,.4); flex-wrap:wrap; gap:12px; }
+  .footer-social{ display:flex; gap:14px; }
+  .footer-social a{
+    width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,248,231,.15);
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:rgba(255,248,231,.6);
+    transition:background .25s ease, color .25s ease, border-color .25s ease;
+  }
+  .footer-social a:hover{ background:var(--marigold); color:var(--ink); border-color:var(--marigold); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<a href="/signup" class="btn btn-marigold float-cta" id="floatCta">Get started</a>
+
+<header class="wrap">
+  <nav>
+    <div class="nav-row">
+      <div class="logo"><span class="logo-mark"><span></span></span> Cadence</div>
+      <div style="display:flex;align-items:center;gap:18px">
+        <a href="/login" style="font-size:14px;color:var(--cream);opacity:.75">Log in</a>
+        <a href="/signup" class="btn btn-primary">Get started</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <h1>One schedule. Everything that <em>repeats</em>, everything you <em>need to do</em>.</h1>
+        <p class="lede">Cadence keeps your recurring routine and your one-off tasks in the same place — so you stop juggling two mental calendars.</p>
+        <div class="hero-ctas">
+          <a href="/signup" class="btn btn-marigold">Get started free</a>
+          <span class="hero-note">Set up your first routine in minutes</span>
+        </div>
+      </div>
+
+      <div class="pond" id="pond" aria-hidden="true">
+        <div class="clock-badge" id="clockBadge">
+          <span class="clock-dot"></span>
+          <time id="clockTime">00:00</time>
+        </div>
+        <div class="water"></div>
+        <!-- chips injected by JS -->
+        <div class="hook" id="hook"></div>
+        <div class="tick" id="tick">✓</div>
+      </div>
+    </div>
+  </section>
+</header>
+
+<section class="problem wrap">
+  <div class="problem-grid">
+    <div>
+      <h2>Two calendars in your head is one too many</h2>
+      <p class="lede">Your recurring routine lives in one app. Your to-dos live in another — or a notes app, or nowhere. Nothing talks to anything else, so you're the one holding it all together.</p>
+    </div>
+    <div class="stack-card">
+      <div class="stack-row"><span class="rowdot"></span> Class/shift schedule — app #1</div>
+      <div class="stack-row"><span class="rowdot"></span> To-do list — app #2, or a sticky note</div>
+      <div class="stack-row"><span class="rowdot"></span> Deadlines — somewhere in your messages</div>
+      <div class="stack-row"><span class="rowdot"></span> Everything, one timeline — Cadence</div>
+    </div>
+  </div>
+</section>
+
+<section class="feature-scroll" id="featureScroll">
+  <div class="feature-pin">
+    <div class="feature-intro" id="featureIntro">
+      <h2>Built to actually hold your week</h2>
+      <p>Keep scrolling — each idea gets its own moment.</p>
+    </div>
+    <div class="feature-stage">
+      <div class="feature-bg" data-stage="0" style="background:radial-gradient(circle at 30% 70%, rgba(255,201,77,.16), transparent 60%);"></div>
+      <div class="feature-bg" data-stage="1" style="background:radial-gradient(circle at 70% 30%, rgba(107,78,255,.22), transparent 60%);"></div>
+      <div class="feature-bg" data-stage="2" style="background:radial-gradient(circle at 30% 30%, rgba(255,138,91,.18), transparent 60%);"></div>
+      <div class="feature-bg" data-stage="3" style="background:radial-gradient(circle at 70% 70%, rgba(255,248,231,.08), transparent 60%);"></div>
+      <div class="feature-blob" id="featureBlob" style="background:var(--marigold); left:15%; top:30%;"></div>
+
+      <div class="feature-cards">
+        <article class="feature-card" data-stage="0">
+          <div class="feature-inner">
+            <div class="feature-icon" style="background:rgba(255,201,77,.18); color:var(--marigold);">↻</div>
+            <h3>Recurring made simple</h3>
+            <p>Set up anything that repeats, once. Classes, shifts, gym days — Cadence keeps them on the timeline without you re-entering a thing.</p>
+          </div>
+        </article>
+        <article class="feature-card" data-stage="1">
+          <div class="feature-inner">
+            <div class="feature-icon" style="background:rgba(107,78,255,.22); color:var(--violet);">✓</div>
+            <h3>Tasks that don't get lost</h3>
+            <p>One-off deadlines live right next to your routine, not buried in a separate app you forget to open.</p>
+          </div>
+        </article>
+        <article class="feature-card" data-stage="2">
+          <div class="feature-inner">
+            <div class="feature-icon" style="background:rgba(255,138,91,.2); color:var(--coral);">⊞</div>
+            <h3>See your whole week</h3>
+            <p>A calendar view that merges your recurring schedule and your tasks automatically. One glance, the full picture.</p>
+          </div>
+        </article>
+        <article class="feature-card" data-stage="3">
+          <div class="feature-inner">
+            <div class="feature-icon" style="background:rgba(255,248,231,.12); color:var(--cream);">◔</div>
+            <h3>Nudges, not noise</h3>
+            <p>Reminders only for what actually matters — timed around your real schedule, not a generic alarm.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="feature-dots">
+        <span data-stage="0" class="active"></span>
+        <span data-stage="1"></span>
+        <span data-stage="2"></span>
+        <span data-stage="3"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="audience wrap reveal" id="audienceSection">
+  <h2>Built for anyone with a routine</h2>
+  <p>Cadence doesn't assume a semester, a job, or a schedule type. You define what repeats — Cadence handles the rest.</p>
+  <div class="chips-row">
+    <button class="a-chip c1">Students</button>
+    <button class="a-chip c2">Freelancers</button>
+    <button class="a-chip c3">Shift workers</button>
+    <button class="a-chip">Anyone with a routine</button>
+  </div>
+</section>
+
+<section class="final-cta" id="cta">
+  <div class="final-cta-inner">
+    <h2>Give your week a rhythm.</h2>
+    <p>Set up your first routine in under two minutes.</p>
+    <a href="/signup" class="btn btn-marigold">Get started free</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-top">
+    <div class="footer-brand">
+      <div class="logo"><span class="logo-mark"><span></span></span> Cadence</div>
+      <p>One timeline for everything that repeats and everything you need to do.</p>
+    </div>
+
+    <div class="how-it-works" id="howItWorks">
+      <div class="step active" data-step="0">
+        <div class="step-num">1</div>
+        <div class="step-label">Add what repeats</div>
+        <div class="step-line"><i></i></div>
+      </div>
+      <div class="step" data-step="1">
+        <div class="step-num">2</div>
+        <div class="step-label">Drop in tasks</div>
+        <div class="step-line"><i></i></div>
+      </div>
+      <div class="step" data-step="2">
+        <div class="step-num">3</div>
+        <div class="step-label">See your week</div>
+        <div class="step-line"><i></i></div>
+      </div>
+      <div class="step" data-step="3">
+        <div class="step-num">4</div>
+        <div class="step-label">Get nudged</div>
+        <div class="step-line"><i></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap footer-bottom">
+    <span>© 2026 Cadence. All rights reserved.</span>
+    <div class="footer-social">
+      <a href="#" aria-label="X / Twitter">X</a>
+      <a href="#" aria-label="Instagram">IG</a>
+      <a href="#" aria-label="LinkedIn">in</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- Floating CTA ---------------- */
+  const floatCta = document.getElementById('floatCta');
+  const heroBottom = document.querySelector('.hero').getBoundingClientRect().bottom + window.scrollY;
+  window.addEventListener('scroll', () => {
+    floatCta.classList.toggle('show', window.scrollY > heroBottom - 200);
+  });
+
+  /* ---------------- Fishing pond hero ---------------- */
+  const TASK_POOL = [
+    {label:'9:00 Class', time:'09:00'},
+    {label:'Team standup', time:'09:30'},
+    {label:'Gym — legs', time:'10:00'},
+    {label:'Grocery run', time:'11:15'},
+    {label:'Design review', time:'12:00'},
+    {label:'Meal prep', time:'13:00'},
+    {label:'Laundry', time:'14:30'},
+    {label:'Water the plants', time:'15:00'},
+    {label:'Pay rent', time:'16:00'},
+    {label:'Call mom', time:'17:00'},
+    {label:'Read 20 min', time:'19:00'},
+    {label:'Pack bag', time:'20:00'},
+    {label:'Study session', time:'21:00'},
+    {label:'Lights out', time:'23:00'}
+  ];
+
+  const POSITIONS = [
+    {left:14, top:28}, {left:32, top:58}, {left:50, top:20},
+    {left:66, top:50}, {left:82, top:32}, {left:24, top:80},
+    {left:58, top:82}, {left:88, top:66}
+  ];
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  const pond = document.getElementById('pond');
+  const clockTime = document.getElementById('clockTime');
+  const clockBadge = document.getElementById('clockBadge');
+  const hook = document.getElementById('hook');
+  const tick = document.getElementById('tick');
+
+  const chosenTasks = shuffle(TASK_POOL).slice(0, POSITIONS.length);
+  const chips = chosenTasks.map((task, i) => {
+    const el = document.createElement('div');
+    el.className = 'chip submerged';
+    el.innerHTML = '<span class="chip-dot"></span>' + task.label;
+    pond.appendChild(el);
+    // Seed each chip's position from the preset spread, in px, so they
+    // start out looking hand-placed before physics takes over movement.
+    const x = pond.clientWidth * (POSITIONS[i].left / 100);
+    const y = pond.clientHeight * (POSITIONS[i].top / 100);
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    // Each chip swims on a heading (like a fish) rather than being pushed
+    // by raw forces — it glides forward and only curves its heading when
+    // wandering, avoiding the cursor, a neighbour, or a wall.
+    return { el, task, pos: POSITIONS[i], x, y, angle: Math.random() * Math.PI * 2, baseSpeed: 0.45 + Math.random() * 0.45, pendingSteer: 0, fleeBoost: 0, escapeBias: (Math.random() - 0.5) * (Math.PI / 1.6), frozen:false };
+  });
+
+  if (reduceMotion) {
+    chips.forEach(c => c.el.classList.add('caught'));
+    clockTime.textContent = chips[0] ? chips[0].task.time : '09:00';
+  } else {
+    let queue = [];
+    const mouse = { x:-9999, y:-9999 };
+
+    pond.addEventListener('mousemove', (e) => {
+      const r = pond.getBoundingClientRect();
+      mouse.x = e.clientX - r.left;
+      mouse.y = e.clientY - r.top;
+    });
+    pond.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+
+    // --- Fish-like swimming: heading + gentle steering ------------------
+    const REPEL_RADIUS = 95;
+    const NEAR_RADIUS = 110;
+    const SEPARATION = 120;
+
+    function angleDiff(a, b){
+      let d = b - a;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      return d;
+    }
+
+    function physicsTick(){
+      const w = pond.clientWidth, h = pond.clientHeight;
+      const waterTop = h * 0.28;
+      const active = chips.filter(c => !c.frozen && !c.el.classList.contains('caught') && !c.el.classList.contains('fly-out'));
+
+      // lazy wander + panic away from the cursor
+      active.forEach(c => {
+        let steer = (Math.random() - 0.5) * 0.09;
+
+        const mdx = c.x - mouse.x, mdy = c.y - mouse.y;
+        const mdist = Math.sqrt(mdx*mdx + mdy*mdy) || 0.001;
+        if (mdist < REPEL_RADIUS) {
+          // each chip has its own fixed escapeBias, so they don't all
+          // peel off dead-radially in a uniform starburst — some cut
+          // sharper left, some right, like a scattering school.
+          const desired = Math.atan2(mdy, mdx) + c.escapeBias;
+          const strength = (REPEL_RADIUS - mdist) / REPEL_RADIUS;
+          steer += angleDiff(c.angle, desired) * 0.65 * strength;
+          c.fleeBoost = Math.max(c.fleeBoost, strength);
+        } else {
+          c.fleeBoost *= 0.9;
+        }
+        c.el.classList.toggle('near-cursor', mdist < NEAR_RADIUS);
+        c.pendingSteer = steer;
+      });
+
+      // steer away from nearby chips so they keep their distance
+      for (let i = 0; i < active.length; i++) {
+        for (let j = i + 1; j < active.length; j++) {
+          const a = active[i], b = active[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
+          if (dist < SEPARATION) {
+            const strength = (SEPARATION - dist) / SEPARATION;
+            a.pendingSteer += angleDiff(a.angle, Math.atan2(dy, dx)) * 0.18 * strength;
+            b.pendingSteer += angleDiff(b.angle, Math.atan2(-dy, -dx)) * 0.18 * strength;
+          }
+        }
+      }
+
+      active.forEach(c => {
+        const halfW = c.el.offsetWidth / 2 + 6, halfH = c.el.offsetHeight / 2 + 6;
+        const left = halfW, right = w - halfW, top = waterTop + halfH, bottom = h - halfH;
+        const edgeMargin = 44;
+        let wallSteer = 0;
+        if (c.x < left + edgeMargin)  wallSteer += angleDiff(c.angle, 0) * 0.3;
+        if (c.x > right - edgeMargin) wallSteer += angleDiff(c.angle, Math.PI) * 0.3;
+        if (c.y < top + edgeMargin)   wallSteer += angleDiff(c.angle, Math.PI / 2) * 0.3;
+        if (c.y > bottom - edgeMargin) wallSteer += angleDiff(c.angle, -Math.PI / 2) * 0.3;
+
+        c.angle += c.pendingSteer + wallSteer;
+        // a real burst of speed while fleeing, easing back to cruise once clear
+        const speed = c.baseSpeed * (1 + c.fleeBoost * 2.4);
+        c.x += Math.cos(c.angle) * speed;
+        c.y += Math.sin(c.angle) * speed;
+
+        // hard safety clamp — bounce the heading if it still slips past
+        if (c.x < left)  { c.x = left;  c.angle = Math.PI - c.angle; }
+        if (c.x > right) { c.x = right; c.angle = Math.PI - c.angle; }
+        if (c.y < top)   { c.y = top;   c.angle = -c.angle; }
+        if (c.y > bottom){ c.y = bottom; c.angle = -c.angle; }
+
+        c.el.style.left = c.x + 'px';
+        c.el.style.top = c.y + 'px';
+      });
+
+      requestAnimationFrame(physicsTick);
+    }
+    requestAnimationFrame(physicsTick);
+
+    function refillQueue(){
+      queue = shuffle(chips.map((_, i) => i));
+    }
+
+    // Pull a fresh random set of tasks (and therefore times) out of the
+    // whole pool for each lap, so it's never the same 8 chips on repeat —
+    // only called between laps, while every chip is safely submerged.
+    function reassignTasks(){
+      const newTasks = shuffle(TASK_POOL).slice(0, chips.length);
+      chips.forEach((c, i) => {
+        c.task = newTasks[i];
+        c.el.innerHTML = '<span class="chip-dot"></span>' + c.task.label;
+      });
+    }
+
+    function flickerClock(targetTime, cb){
+      let ticks = 0;
+      const maxTicks = 10;
+      const iv = setInterval(() => {
+        const h = String(Math.floor(Math.random()*24)).padStart(2,'0');
+        const m = String(Math.floor(Math.random()*60)).padStart(2,'0');
+        clockTime.textContent = h + ':' + m;
+        ticks++;
+        if (ticks >= maxTicks){
+          clearInterval(iv);
+          clockTime.textContent = targetTime;
+          clockBadge.classList.remove('settled');
+          void clockBadge.offsetWidth;
+          clockBadge.classList.add('settled');
+          setTimeout(cb, 350);
+        }
+      }, 75);
+    }
+
+    function moveHook(x, y, cb){
+      hook.style.opacity = '1';
+      hook.style.left = x + 'px';
+      hook.style.top = y + 'px';
+      setTimeout(cb, 560);
+    }
+
+    function pondPointFor(chipObj){
+      const pondRect = pond.getBoundingClientRect();
+      const chipRect = chipObj.el.getBoundingClientRect();
+      return {
+        x: chipRect.left - pondRect.left + chipRect.width/2,
+        y: chipRect.top - pondRect.top + chipRect.height/2
+      };
+    }
+
+    function catchChip(chipObj){
+      const pt = pondPointFor(chipObj);
+      const clockPt = { x: pond.clientWidth - 40, y: 34 };
+
+      moveHook(pt.x, pt.y, () => {
+        chipObj.el.classList.remove('submerged');
+        chipObj.el.classList.add('caught');
+        hook.style.opacity = '0';
+
+        tick.style.left = (pt.x + 26) + 'px';
+        tick.style.top = (pt.y - 18) + 'px';
+        tick.classList.add('show');
+
+        setTimeout(() => {
+          tick.classList.remove('show');
+          chipObj.el.classList.add('fly-out');
+          chipObj.el.style.transform = 'translate(' + (clockPt.x - pt.x) + 'px,' + (clockPt.y - pt.y) + 'px) scale(.3)';
+          setTimeout(() => {
+            chipObj.el.classList.remove('caught','fly-out');
+            chipObj.el.classList.add('submerged');
+            chipObj.el.style.transform = '';
+            chipObj.frozen = false;
+            runNext();
+          }, 620);
+        }, 700);
+      });
+    }
+
+    function runNext(){
+      if (queue.length === 0) {
+        setTimeout(refillAndGo, 900);
+        return;
+      }
+      const idx = queue.pop();
+      const chipObj = chips[idx];
+      chipObj.frozen = true;
+      chipObj.el.classList.remove('near-cursor');
+      flickerClock(chipObj.task.time, () => catchChip(chipObj));
+    }
+
+    function refillAndGo(){
+      reassignTasks();
+      refillQueue();
+      runNext();
+    }
+
+    refillAndGo();
+  }
+
+  /* ---------------- Pinned feature scroll ---------------- */
+  const featureScroll = document.getElementById('featureScroll');
+  const featureIntro = document.getElementById('featureIntro');
+  const featureCards = document.querySelectorAll('.feature-card');
+  const featureBgs = document.querySelectorAll('.feature-bg');
+  const featureDots = document.querySelectorAll('.feature-dots span');
+  const blob = document.getElementById('featureBlob');
+  const blobColors = ['var(--marigold)', 'var(--violet)', 'var(--coral)', 'var(--cream)'];
+  const blobPos = [{left:'15%',top:'30%'},{left:'60%',top:'55%'},{left:'20%',top:'65%'},{left:'65%',top:'20%'}];
+
+  // Scroll progress is split into three phases:
+  //   0 – INTRO_END        : intro headline holds, nothing else visible
+  //   INTRO_END – STAGES_END : intro fades out once, then the 4 feature
+  //                            slides cycle, each filling the full screen
+  //   STAGES_END – 1        : last slide fades to blank before release
+  const INTRO_FADE_START = 0.06;
+  const INTRO_FADE_END = 0.12;
+  const STAGES_START = 0.12;
+  const STAGES_END = 0.92;
+
+  let currentStage = -1;
+  let cardTimer = null;
+
+  function setStage(stage){
+    if (stage === currentStage) return;
+    currentStage = stage;
+
+    // Background + dots switch immediately...
+    featureBgs.forEach(b => b.classList.toggle('active', +b.dataset.stage === stage));
+    featureDots.forEach(d => d.classList.toggle('active', +d.dataset.stage === stage));
+    if (stage >= 0 && stage <= 3) {
+      blob.style.background = blobColors[stage];
+      blob.style.left = blobPos[stage].left;
+      blob.style.top = blobPos[stage].top;
+    }
+
+    // ...every card fades out right away...
+    featureCards.forEach(c => c.classList.remove('active'));
+    clearTimeout(cardTimer);
+
+    // ...and the new card only fades in after the background has had a
+    // moment to shift, so the transition reads as bg-first, card-second,
+    // with a brief fully-faded beat in between rather than a hard cut.
+    if (stage >= 0 && stage <= 3 && !reduceMotion) {
+      cardTimer = setTimeout(() => {
+        featureCards.forEach(c => c.classList.toggle('active', +c.dataset.stage === stage));
+      }, 220);
+    } else if (stage >= 0 && stage <= 3) {
+      featureCards.forEach(c => c.classList.toggle('active', +c.dataset.stage === stage));
+    }
+  }
+
+  let landingDone = false;
+  let scrollLocked = false;
+
+  function preventScrollWhileLocked(e){
+    if (scrollLocked) e.preventDefault();
+  }
+  window.addEventListener('wheel', preventScrollWhileLocked, { passive:false });
+  window.addEventListener('touchmove', preventScrollWhileLocked, { passive:false });
+
+  function landOnce(){
+    if (landingDone || reduceMotion) { landingDone = true; return; }
+    landingDone = true;
+    scrollLocked = true;
+    // A short, deliberate pause right as the sequence ends — long enough
+    // to read as "that animation just finished," then scrolling continues
+    // normally. This only ever happens the first time through.
+    setTimeout(() => { scrollLocked = false; }, 750);
+  }
+
+  window.addEventListener('scroll', () => {
+    const rect = featureScroll.getBoundingClientRect();
+    const total = featureScroll.offsetHeight - window.innerHeight;
+    const progress = Math.min(Math.max(-rect.top / total, 0), 1);
+
+    if (progress <= INTRO_FADE_START) {
+      featureIntro.style.opacity = 1;
+      featureIntro.style.pointerEvents = 'auto';
+    } else if (progress < INTRO_FADE_END) {
+      featureIntro.style.opacity = String(1 - (progress - INTRO_FADE_START) / (INTRO_FADE_END - INTRO_FADE_START));
+      featureIntro.style.pointerEvents = 'none';
+    } else {
+      featureIntro.style.opacity = 0;
+      featureIntro.style.pointerEvents = 'none';
+    }
+
+    if (progress < STAGES_START) {
+      setStage(-1);
+    } else if (progress < STAGES_END) {
+      const local = (progress - STAGES_START) / (STAGES_END - STAGES_START);
+      setStage(Math.min(3, Math.floor(local * 4)));
+    } else {
+      setStage(4); // blank pause — everything faded, before release
+    }
+
+    if (progress >= 0.999) landOnce();
+  }, { passive:true });
+
+  /* ---------------- Post-pin reveal ----------------
+     The pinned section is the one intense scroll moment on the page —
+     once it releases, the very next section (audience) fades/slides in
+     on its own instead of just appearing, so normal scrolling resumes
+     with a clear, deliberate handoff rather than an abrupt cut. */
+  const audienceSection = document.getElementById('audienceSection');
+  if (audienceSection) {
+    if (reduceMotion) {
+      audienceSection.classList.add('visible');
+    } else {
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            audienceSection.classList.add('visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.2 });
+      revealObserver.observe(audienceSection);
+    }
+  }
+
+  /* ---------------- Footer how-it-works cycle ---------------- */
+  const steps = document.querySelectorAll('.step');
+  let stepIndex = 0;
+  const stepLines = Array.from(steps).map(s => s.querySelector('.step-line i'));
+
+  function setLine(i, mode){
+    const line = stepLines[i];
+    if (mode === 'active') {
+      // Force the bar back to 0% (no transition), reflow, then animate to
+      // 100% — this is what makes it re-fill visibly every lap instead of
+      // silently staying at 100% from the previous time it was active.
+      line.style.transition = 'none';
+      line.style.width = '0%';
+      void line.offsetWidth;
+      line.style.transition = 'width 2.6s linear';
+      line.style.width = '100%';
+    } else if (mode === 'done') {
+      line.style.transition = 'none';
+      line.style.width = '100%';
+    } else {
+      line.style.transition = 'none';
+      line.style.width = '0%';
+    }
+  }
+
+  function cycleSteps(){
+    steps.forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i === stepIndex) {
+        s.classList.add('active');
+        setLine(i, 'active');
+      } else if (i < stepIndex) {
+        s.classList.add('done');
+        setLine(i, 'done');
+      } else {
+        setLine(i, 'pending');
+      }
+    });
+    stepIndex = (stepIndex + 1) % steps.length;
+  }
+  cycleSteps();
+  if (!reduceMotion) setInterval(cycleSteps, 2600);
+})();
+</script>
+
+</body>
+</html>

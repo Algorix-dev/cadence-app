@@ -5,6 +5,9 @@ import { supabase } from "@/lib/supabase/client";
 
 type Recurring = { id: string; title: string; day_of_week: number; start_time: string; color: string };
 type Task = { id: string; title: string; due_date: string; due_time: string | null; done: boolean };
+type Item =
+  | { kind: "recurring"; id: string; title: string; time: string; color: string }
+  | { kind: "task"; id: string; title: string; time: string; done: boolean };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -31,6 +34,7 @@ export default function WeekPage() {
   const [recurring, setRecurring] = useState<Recurring[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeIdx, setActiveIdx] = useState(new Date().getDay());
 
   const weekStart = startOfWeek(new Date());
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -63,64 +67,88 @@ export default function WeekPage() {
   if (loading) return <p className="text-sm text-cream/60">Loading your week…</p>;
 
   const todayISO = toISODate(new Date());
+  const todayIdx = new Date().getDay();
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+  function itemsFor(i: number, iso: string): Item[] {
+    const dayRecurring: Item[] = recurring
+      .filter((r) => r.day_of_week === i)
+      .map((r) => ({ kind: "recurring", id: r.id, title: r.title, time: r.start_time, color: r.color }));
+    const dayTasks: Item[] = tasks
+      .filter((t) => t.due_date === iso)
+      .map((t) => ({ kind: "task", id: t.id, title: t.title, time: t.due_time ?? "", done: t.done }));
+    return [...dayRecurring, ...dayTasks].sort((a, b) => (a.time || "24:00").localeCompare(b.time || "24:00"));
+  }
 
   return (
     <div>
-      <p className="text-sm text-marigold">{greeting()}{name ? `, ${name}` : ""}</p>
+      <p className="text-sm text-marigold">
+        {greeting()}
+        {name ? `, ${name}` : ""}
+      </p>
       <h1 className="mt-1 text-3xl font-display font-bold text-cream">Give your week a rhythm.</h1>
       <p className="mt-1 text-sm text-cream/50">{todayLabel}</p>
 
-      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+      <div className="mt-8 flex gap-2 items-stretch flex-wrap sm:flex-nowrap">
         {weekDates.map((date, i) => {
           const iso = toISODate(date);
           const isToday = iso === todayISO;
-          const dayRecurring = recurring
-            .filter((r) => r.day_of_week === i)
-            .map((r) => ({ kind: "recurring" as const, title: r.title, time: r.start_time, color: r.color, id: r.id }));
-          const dayTasks = tasks
-            .filter((t) => t.due_date === iso)
-            .map((t) => ({
-              kind: "task" as const,
-              title: t.title,
-              time: t.due_time ?? "",
-              done: t.done,
-              id: t.id,
-            }));
-          const items = [...dayRecurring, ...dayTasks].sort((a, b) => (a.time || "24:00").localeCompare(b.time || "24:00"));
+          const isActive = i === activeIdx;
+          const items = itemsFor(i, iso);
 
           return (
-            <div
+            <button
               key={iso}
-              className={`surface surface-hover px-3.5 py-3.5 min-h-[150px] ${
-                isToday ? "!border-marigold/50 shadow-[0_0_0_1px_rgba(255,201,77,0.35),0_20px_40px_-20px_rgba(0,0,0,0.55)]" : ""
-              }`}
+              onClick={() => setActiveIdx(i)}
+              className={`day-chip surface text-left px-3.5 py-3.5 flex flex-col ${
+                isActive ? "day-chip-active" : ""
+              } ${isToday ? "!border-marigold/40" : ""}`}
+              style={isActive ? { flexGrow: 5 } : undefined}
             >
-              <div className={`text-xs font-bold ${isToday ? "text-marigold" : "text-cream/50"}`}>
-                {DAY_LABELS[i]} {date.getDate()}
+              <div className="flex items-baseline justify-between gap-1.5">
+                <span className={`text-xs font-bold whitespace-nowrap ${isToday || isActive ? "text-marigold" : "text-cream/45"}`}>
+                  {DAY_LABELS[i]}
+                  {isToday && <span className="today-pip" />}
+                </span>
+                <span className={`font-display font-bold text-base ${isActive ? "text-cream" : "text-cream/70"}`}>
+                  {date.getDate()}
+                </span>
               </div>
-              <ul className="mt-2.5 space-y-1.5">
-                {items.length === 0 && <li className="text-xs text-cream/25">—</li>}
-                {items.map((item) => (
-                  <li key={`${item.kind}-${item.id}`} className="text-xs">
+
+              {!isActive && (
+                <div className="mt-auto pt-2.5 flex flex-wrap gap-1">
+                  {items.slice(0, 6).map((item) => (
                     <span
-                      className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${
-                        item.kind === "task" ? "bg-marigold" : ""
-                      }`}
-                      style={item.kind === "recurring" ? { background: (item as any).color } : undefined}
+                      key={`${item.kind}-${item.id}`}
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: item.kind === "task" ? "#FFC94D" : item.color }}
                     />
-                    <span
-                      className={
-                        item.kind === "task" && (item as any).done ? "text-cream/30 line-through" : "text-cream/85"
-                      }
-                    >
-                      {item.time && <span className="tabular-nums text-cream/40">{item.time.slice(0, 5)} </span>}
-                      {item.title}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                  ))}
+                </div>
+              )}
+
+              <div className={`day-agenda ${isActive ? "day-agenda-open" : ""}`}>
+                <div className="mt-3.5 flex flex-col gap-1.5">
+                  {items.length === 0 && <p className="text-xs text-cream/30">Nothing on the books.</p>}
+                  {items.map((item) => (
+                    <div key={`${item.kind}-${item.id}`} className="flex items-center gap-2 text-xs">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ background: item.kind === "task" ? "#FFC94D" : item.color }}
+                      />
+                      {item.time && <span className="tabular-nums text-cream/40 shrink-0">{item.time.slice(0, 5)}</span>}
+                      <span
+                        className={`truncate ${
+                          item.kind === "task" && item.done ? "text-cream/30 line-through" : "text-cream/85"
+                        }`}
+                      >
+                        {item.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </button>
           );
         })}
       </div>
