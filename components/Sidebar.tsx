@@ -11,12 +11,11 @@ import { supabase } from "@/lib/supabase/client";
 const links = [
   { href: "/dashboard", label: "Today" },
   { href: "/dashboard/tasks", label: "Tasks" },
+  { href: "/dashboard/calendar", label: "Calendar" },
   { href: "/dashboard/recurring", label: "Timetable" },
+  { href: "/dashboard/events", label: "Events" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
-// Calendar and Events were removed from this list — there's no
-// /dashboard/calendar or /dashboard/events page behind them yet, so they
-// were 404ing. Add them back once those pages exist.
 
 export default function Sidebar() {
   const pathname = usePathname();
