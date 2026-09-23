@@ -138,6 +138,75 @@ h3 {
     max-height: 320px;
     opacity: 1;
   }
+
+  /* Tasks page — filter pills + priority picker */
+  .chip {
+    @apply rounded-full border border-cream/15 bg-ink-soft/60 px-3.5 py-1.5 text-xs font-semibold text-cream/60 transition;
+  }
+  .chip:hover {
+    border-color: rgba(255, 201, 77, 0.3);
+    color: #fff8e7;
+  }
+  .chip[aria-pressed="true"] {
+    background: #ffc94d;
+    border-color: #ffc94d;
+    color: #1a1730;
+  }
+
+  /* Tasks page — custom checkbox (native input hidden, styled box + check svg) */
+  .check {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+  }
+  .check input {
+    position: absolute;
+    opacity: 0;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+  }
+  .check .box {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255, 248, 231, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .check .box svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: #1a1730;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .check input:checked + .box {
+    background: #ffc94d;
+    border-color: #ffc94d;
+  }
+  .check input:checked + .box svg {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .check input:focus-visible + .box {
+    outline: 3px solid #ffc94d;
+    outline-offset: 2px;
+  }
+
+  /* Tasks page — row removal animation. removeTask() adds this class, waits
+     ~220ms for it to play, then actually drops the row from state. */
+  .row-out {
+    animation: rowOut 0.22s ease forwards;
+  }
 }
 
 @media (max-width: 640px) {
@@ -158,5 +227,12 @@ h3 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes rowOut {
+  to {
+    opacity: 0;
+    transform: translateX(12px) scale(0.98);
   }
 }
