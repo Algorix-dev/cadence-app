@@ -1,157 +1,365 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-type Recurring = { id: string; title: string; day_of_week: number; start_time: string; color: string };
-type Task = { id: string; title: string; due_date: string; due_time: string | null; done: boolean };
-type Item =
-  | { kind: "recurring"; id: string; title: string; time: string; color: string }
-  | { kind: "task"; id: string; title: string; time: string; done: boolean };
+type Priority = "low" | "medium" | "high";
+type Task = {
+  id: string;
+  title: string;
+  due_date: string;
+  due_time: string | null;
+  notes: string | null;
+  priority: Priority;
+  category: string | null;
+  done: boolean;
+  remind_minutes_before: number;
+};
 
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+type Filter = "all" | "today" | "upcoming" | "done";
 
-function startOfWeek(d: Date) {
-  const date = new Date(d);
-  date.setDate(date.getDate() - date.getDay());
-  date.setHours(0, 0, 0, 0);
-  return date;
+const PRIORITY_LABEL: Record<Priority, string> = { high: "High", medium: "Medium", low: "Low" };
+// TIP: swap these three classes to restyle priority tags without touching
+// any JSX below — everything reads from this one map.
+const PRIORITY_CLASS: Record<Priority, string> = {
+  high: "bg-coral/15 text-coral",
+  medium: "bg-marigold/15 text-marigold",
+  low: "bg-[#5AA9A3]/15 text-[#5AA9A3]",
+};
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+function dueLabel(dateISO: string) {
+  const today = todayISO();
+  if (dateISO === today) return "Today";
+  const d = new Date(dateISO + "T00:00");
+  const diffDays = Math.round((d.getTime() - new Date(today + "T00:00").getTime()) / 86400000);
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays === -1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
+// One shared shape for the add form and the edit form, so editing a task
+// reuses the exact same fields instead of a second, slightly different form.
+type Draft = {
+  title: string;
+  due_date: string;
+  due_time: string;
+  priority: Priority;
+  category: string;
+  notes: string;
+  remind: number;
+};
+const emptyDraft = (remind = 60): Draft => ({
+  title: "",
+  due_date: todayISO(),
+  due_time: "",
+  priority: "medium",
+  category: "",
+  notes: "",
+  remind,
+});
 
-export default function WeekPage() {
-  const [name, setName] = useState("");
-  const [recurring, setRecurring] = useState<Recurring[]>([]);
+export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeIdx, setActiveIdx] = useState(new Date().getDay());
+  const [filter, setFilter] = useState<Filter>("all");
+  const [draft, setDraft] = useState<Draft>(emptyDraft());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  // Pulled from Settings > "Default nudge lead time"; prefills new tasks'
+  // reminder field. Falls back to 60 (the tasks.remind_minutes_before
+  // column default) if the user has no saved settings row yet.
+  const [defaultRemind, setDefaultRemind] = useState(60);
 
-  const weekStart = startOfWeek(new Date());
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
+  async function load() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const [{ data }, { data: settings }] = await Promise.all([
+      supabase.from("tasks").select("*").order("due_date").order("due_time"),
+      user
+        ? supabase.from("user_settings").select("default_reminder_minutes").eq("user_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    setTasks((data as Task[]) ?? []);
+    const fallback = settings?.default_reminder_minutes ?? 60;
+    setDefaultRemind(fallback);
+    setDraft((d) => (d.remind === 60 ? { ...d, remind: fallback } : d));
+    setLoading(false);
+  }
 
   useEffect(() => {
-    async function load() {
-      const weekEnd = toISODate(weekDates[6]);
-      const weekStartISO = toISODate(weekDates[0]);
+    load();
+  }, []);
+
+  const counts = useMemo(() => {
+    const today = todayISO();
+    return {
+      today: tasks.filter((t) => !t.done && t.due_date === today).length,
+      upcoming: tasks.filter((t) => !t.done && t.due_date > today).length,
+      done: tasks.filter((t) => t.done).length,
+    };
+  }, [tasks]);
+
+  const visible = useMemo(() => {
+    const today = todayISO();
+    switch (filter) {
+      case "today":
+        return tasks.filter((t) => !t.done && t.due_date === today);
+      case "upcoming":
+        return tasks.filter((t) => !t.done && t.due_date > today);
+      case "done":
+        return tasks.filter((t) => t.done);
+      default:
+        return tasks;
+    }
+  }, [tasks, filter]);
+
+  function startEdit(t: Task) {
+    setEditingId(t.id);
+    setDraft({
+      title: t.title,
+      due_date: t.due_date,
+      due_time: t.due_time ?? "",
+      priority: t.priority,
+      category: t.category ?? "",
+      notes: t.notes ?? "",
+      remind: t.remind_minutes_before,
+    });
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setDraft(emptyDraft(defaultRemind));
+    setError(null);
+  }
+
+  async function saveDraft(e: React.FormEvent) {
+    e.preventDefault();
+    if (!draft.title.trim()) {
+      setError("Give the task a title first.");
+      return;
+    }
+    if (!draft.due_date) {
+      setError("Pick a due date.");
+      return;
+    }
+    setError(null);
+
+    const payload = {
+      title: draft.title.trim(),
+      due_date: draft.due_date,
+      due_time: draft.due_time || null,
+      priority: draft.priority,
+      category: draft.category.trim() || null,
+      notes: draft.notes.trim() || null,
+      remind_minutes_before: draft.remind,
+    };
+
+    if (editingId) {
+      // Optimistic update: the row reflects the edit immediately, and we
+      // reconcile with the server response after. If the request fails the
+      // load() below will pull the previous saved state back in.
+      setTasks((prev) => prev.map((t) => (t.id === editingId ? { ...t, ...payload } : t)));
+      await supabase.from("tasks").update(payload).eq("id", editingId);
+    } else {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const [{ data: r }, { data: t }, { data: settings }] = await Promise.all([
-        supabase.from("recurring_events").select("id,title,day_of_week,start_time,color"),
-        supabase.from("tasks").select("id,title,due_date,due_time,done").gte("due_date", weekStartISO).lte("due_date", weekEnd),
-        user ? supabase.from("user_settings").select("display_name").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
-      ]);
-      setName(settings?.display_name || user?.email?.split("@")[0] || "");
-      setRecurring((r as Recurring[]) ?? []);
-      setTasks((t as Task[]) ?? []);
-      setLoading(false);
+      if (!user) return;
+      await supabase.from("tasks").insert({ ...payload, user_id: user.id });
     }
+
+    cancelEdit();
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }
 
-  if (loading) return <p className="text-sm text-cream/60">Loading your week…</p>;
+  async function toggleDone(t: Task) {
+    setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)));
+    await supabase.from("tasks").update({ done: !t.done }).eq("id", t.id);
+  }
 
-  const todayISO = toISODate(new Date());
-  const todayIdx = new Date().getDay();
-  const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-
-  function itemsFor(i: number, iso: string): Item[] {
-    const dayRecurring: Item[] = recurring
-      .filter((r) => r.day_of_week === i)
-      .map((r) => ({ kind: "recurring", id: r.id, title: r.title, time: r.start_time, color: r.color }));
-    const dayTasks: Item[] = tasks
-      .filter((t) => t.due_date === iso)
-      .map((t) => ({ kind: "task", id: t.id, title: t.title, time: t.due_time ?? "", done: t.done }));
-    return [...dayRecurring, ...dayTasks].sort((a, b) => (a.time || "24:00").localeCompare(b.time || "24:00"));
+  async function removeTask(id: string) {
+    // Let the exit animation play (row-out, ~220ms) before the row actually
+    // leaves the tasks array — otherwise React unmounts it instantly and the
+    // CSS animation never gets a chance to run.
+    setExitingIds((prev) => new Set(prev).add(id));
+    setTimeout(async () => {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setExitingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      await supabase.from("tasks").delete().eq("id", id);
+    }, 220);
   }
 
   return (
     <div>
-      <p className="text-sm text-marigold">
-        {greeting()}
-        {name ? `, ${name}` : ""}
-      </p>
-      <h1 className="mt-1 text-3xl font-display font-bold text-cream">Give your week a rhythm.</h1>
-      <p className="mt-1 text-sm text-cream/50">{todayLabel}</p>
+      <h1 className="text-2xl font-display font-bold text-cream">Tasks</h1>
+      <p className="mt-1 text-sm text-cream/60">One-off deadlines, right next to your routine.</p>
 
-      <div className="mt-8 flex gap-2 items-stretch flex-wrap sm:flex-nowrap">
-        {weekDates.map((date, i) => {
-          const iso = toISODate(date);
-          const isToday = iso === todayISO;
-          const isActive = i === activeIdx;
-          const items = itemsFor(i, iso);
-
-          return (
-            <button
-              key={iso}
-              onClick={() => setActiveIdx(i)}
-              className={`day-chip surface text-left px-3.5 py-3.5 flex flex-col ${
-                isActive ? "day-chip-active" : ""
-              } ${isToday ? "!border-marigold/40" : ""}`}
-              style={isActive ? { flexGrow: 5 } : undefined}
-            >
-              <div className="flex items-baseline justify-between gap-1.5">
-                <span className={`text-xs font-bold whitespace-nowrap ${isToday || isActive ? "text-marigold" : "text-cream/45"}`}>
-                  {DAY_LABELS[i]}
-                  {isToday && <span className="today-pip" />}
-                </span>
-                <span className={`font-display font-bold text-base ${isActive ? "text-cream" : "text-cream/70"}`}>
-                  {date.getDate()}
-                </span>
-              </div>
-
-              {!isActive && (
-                <div className="mt-auto pt-2.5 flex flex-wrap gap-1">
-                  {items.slice(0, 6).map((item) => (
-                    <span
-                      key={`${item.kind}-${item.id}`}
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: item.kind === "task" ? "#FFC94D" : item.color }}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <div className={`day-agenda ${isActive ? "day-agenda-open" : ""}`}>
-                <div className="mt-3.5 flex flex-col gap-1.5">
-                  {items.length === 0 && <p className="text-xs text-cream/30">Nothing on the books.</p>}
-                  {items.map((item) => (
-                    <div key={`${item.kind}-${item.id}`} className="flex items-center gap-2 text-xs">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ background: item.kind === "task" ? "#FFC94D" : item.color }}
-                      />
-                      {item.time && <span className="tabular-nums text-cream/40 shrink-0">{item.time.slice(0, 5)}</span>}
-                      <span
-                        className={`truncate ${
-                          item.kind === "task" && item.done ? "text-cream/30 line-through" : "text-cream/85"
-                        }`}
-                      >
-                        {item.title}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </button>
-          );
-        })}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <button className="chip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+          All ({tasks.length})
+        </button>
+        <button className="chip" aria-pressed={filter === "today"} onClick={() => setFilter("today")}>
+          Today ({counts.today})
+        </button>
+        <button className="chip" aria-pressed={filter === "upcoming"} onClick={() => setFilter("upcoming")}>
+          Upcoming ({counts.upcoming})
+        </button>
+        <button className="chip" aria-pressed={filter === "done"} onClick={() => setFilter("done")}>
+          Done ({counts.done})
+        </button>
       </div>
+
+      <form onSubmit={saveDraft} className="surface mt-5 px-5 py-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs text-cream/50 mb-1">Title</label>
+            <input
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              placeholder="Submit assignment…"
+              className="field w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-cream/50 mb-1">Due date</label>
+            <input
+              type="date"
+              value={draft.due_date}
+              onChange={(e) => setDraft({ ...draft, due_date: e.target.value })}
+              className="field"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-cream/50 mb-1">Due time</label>
+            <input
+              type="time"
+              value={draft.due_time}
+              onChange={(e) => setDraft({ ...draft, due_time: e.target.value })}
+              className="field"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-cream/50 mb-1">Category</label>
+            <input
+              value={draft.category}
+              onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+              placeholder="CSC 201…"
+              className="field w-32"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-cream/50 mb-1">Remind (min before)</label>
+            <input
+              type="number"
+              min={0}
+              value={draft.remind}
+              onChange={(e) => setDraft({ ...draft, remind: Number(e.target.value) })}
+              className="field w-24"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-cream/50">Priority</span>
+            <div className="flex gap-1.5">
+              {(["low", "medium", "high"] as Priority[]).map((p) => (
+                <button
+                  type="button"
+                  key={p}
+                  className="chip"
+                  aria-pressed={draft.priority === p}
+                  onClick={() => setDraft({ ...draft, priority: p })}
+                >
+                  {PRIORITY_LABEL[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            {error && <span className="text-xs text-coral">{error}</span>}
+            {editingId && (
+              <button type="button" onClick={cancelEdit} className="btn-ghost">
+                Cancel
+              </button>
+            )}
+            <button type="submit" className="btn-solid">
+              {editingId ? "Save changes" : "Drop it in"}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {loading ? (
+        <p className="mt-8 text-sm text-cream/60">Loading…</p>
+      ) : visible.length === 0 ? (
+        <p className="mt-8 text-sm text-cream/60">
+          {filter === "done" ? "Nothing marked done yet." : "Nothing here — add a task above."}
+        </p>
+      ) : (
+        <ul className="mt-6 space-y-2">
+          {visible.map((t) => (
+            <li
+              key={t.id}
+              className={`group flex items-center justify-between gap-3 rounded-xl bg-ink-soft/60 border border-cream/10 px-3.5 py-3 transition hover:border-marigold/30 ${
+                exitingIds.has(t.id) ? "row-out" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <label className="check">
+                  <input type="checkbox" checked={t.done} onChange={() => toggleDone(t)} />
+                  <span className="box">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M5 12.5l4.5 4.5L19 7" />
+                    </svg>
+                  </span>
+                </label>
+                <div className="min-w-0">
+                  <p className={`text-sm truncate ${t.done ? "text-cream/40 line-through" : "text-cream"}`}>
+                    {t.title}
+                  </p>
+                  <p className="text-xs text-cream/45 tabular-nums">
+                    {dueLabel(t.due_date)}
+                    {t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ""}
+                    {t.category ? ` · ${t.category}` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PRIORITY_CLASS[t.priority]}`}>
+                  {PRIORITY_LABEL[t.priority]}
+                </span>
+                <button
+                  onClick={() => startEdit(t)}
+                  className="text-xs text-cream/40 opacity-0 group-hover:opacity-100 hover:text-marigold transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => removeTask(t.id)}
+                  className="text-xs text-cream/40 opacity-0 group-hover:opacity-100 hover:text-coral transition"
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
