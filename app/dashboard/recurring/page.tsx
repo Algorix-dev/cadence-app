@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import TimeField from "@/components/pickers/TimeField";
+import MinutesField from "@/components/pickers/MinutesField";
 
 type Recurring = {
   id: string;
@@ -15,6 +17,12 @@ type Recurring = {
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const PALETTE = ["#6B4EFF", "#FF8A5B", "#FFC94D", "#5AA9A3", "#B5715A"];
+const HOUR_H = 56; // px per hour in the grid below
+
+function toMinutes(t: string) {
+  const [h, m] = t.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+}
 
 export default function RecurringPage() {
   const [items, setItems] = useState<Recurring[]>([]);
@@ -69,6 +77,7 @@ export default function RecurringPage() {
     setStart(item.start_time.slice(0, 5));
     setEnd(item.end_time.slice(0, 5));
     setRemind(item.remind_minutes_before);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function submit(e: React.FormEvent) {
@@ -106,6 +115,23 @@ export default function RecurringPage() {
     load();
   }
 
+  // The grid always covers a sane school/work day (6am-10pm) but stretches
+  // to fit anything earlier or later than that, so a 5am shift or an 11pm
+  // class still shows up instead of getting clipped off the top/bottom.
+  const { rangeStartMin, totalHours } = useMemo(() => {
+    let earliest = 6 * 60;
+    let latest = 22 * 60;
+    items.forEach((it) => {
+      earliest = Math.min(earliest, toMinutes(it.start_time));
+      latest = Math.max(latest, toMinutes(it.end_time));
+    });
+    const startHour = Math.floor(earliest / 60);
+    const endHour = Math.ceil(latest / 60);
+    return { rangeStartMin: startHour * 60, totalHours: Math.max(1, endHour - startHour) };
+  }, [items]);
+
+  const hourMarks = Array.from({ length: totalHours + 1 }, (_, i) => rangeStartMin / 60 + i);
+
   return (
     <div>
       <h1 className="text-2xl font-display font-bold text-cream">What repeats</h1>
@@ -131,24 +157,9 @@ export default function RecurringPage() {
             ))}
           </select>
         </div>
-        <div>
-          <label className="block text-xs text-cream/50 mb-1">Start</label>
-          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="field" />
-        </div>
-        <div>
-          <label className="block text-xs text-cream/50 mb-1">End</label>
-          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="field" />
-        </div>
-        <div>
-          <label className="block text-xs text-cream/50 mb-1">Remind me (min before)</label>
-          <input
-            type="number"
-            min={0}
-            value={remind}
-            onChange={(e) => setRemind(Number(e.target.value))}
-            className="field w-24"
-          />
-        </div>
+        <TimeField label="Start" value={start} onChange={setStart} />
+        <TimeField label="End" value={end} onChange={setEnd} />
+        <MinutesField label="Remind" value={remind} onChange={setRemind} />
         <button type="submit" className="btn-solid">
           {editingId ? "Save changes" : "Add"}
         </button>
@@ -164,43 +175,89 @@ export default function RecurringPage() {
       ) : items.length === 0 ? (
         <p className="mt-8 text-sm text-cream/60">Nothing set up yet — add your first recurring block above.</p>
       ) : (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {DAYS.map((d, i) => {
-            const dayItems = items.filter((it) => it.day_of_week === i);
-            if (dayItems.length === 0) return null;
-            return (
-              <div key={i}>
-                <h2 className="text-sm font-semibold text-cream/70">{d}</h2>
-                <ul className="mt-2 space-y-2">
-                  {dayItems.map((it) => (
-                    <li
-                      key={it.id}
-                      className={`flex items-center justify-between rounded-xl bg-ink-soft/60 border px-3.5 py-2.5 transition hover:border-marigold/30 ${
-                        editingId === it.id ? "border-marigold/50" : "border-cream/10"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2.5 text-sm text-cream">
-                        <span className="w-2 h-2 rounded-full" style={{ background: it.color }} />
-                        {it.title}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-cream/50 tabular-nums">
-                          {it.start_time.slice(0, 5)}–{it.end_time.slice(0, 5)}
-                        </span>
-                        <span className="text-xs text-cream/35 tabular-nums">–{it.remind_minutes_before}m</span>
-                        <button onClick={() => startEdit(it)} className="text-xs text-cream/40 hover:text-marigold transition">
-                          Edit
-                        </button>
-                        <button onClick={() => removeItem(it.id)} className="text-xs text-cream/40 hover:text-coral transition">
-                          Remove
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+        <div className="surface mt-8 px-4 py-4 overflow-x-auto">
+          <div className="min-w-[720px]">
+            {/* Day headers */}
+            <div className="grid pl-12" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+              {DAYS.map((d) => (
+                <div key={d} className="text-center text-xs font-semibold text-cream/50 pb-2">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Time grid: a time-label rail + 7 day columns, each an absolute
+                canvas that event blocks are positioned into by start/duration. */}
+            <div className="flex">
+              <div className="w-12 shrink-0 relative" style={{ height: totalHours * HOUR_H }}>
+                {hourMarks.map((h) => (
+                  <div
+                    key={h}
+                    className="absolute right-2 -translate-y-1/2 text-[10px] text-cream/35 tabular-nums"
+                    style={{ top: (h - rangeStartMin / 60) * HOUR_H }}
+                  >
+                    {((h % 24) === 0 ? 12 : h % 24 > 12 ? h % 24 - 12 : h % 24)}
+                    {h % 24 >= 12 ? "p" : "a"}
+                  </div>
+                ))}
               </div>
-            );
-          })}
+
+              <div
+                className="flex-1 grid relative"
+                style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))", height: totalHours * HOUR_H }}
+              >
+                {/* hour gridlines, spanning all columns */}
+                {hourMarks.map((h) => (
+                  <div
+                    key={h}
+                    className="absolute left-0 right-0 border-t border-cream/[0.06]"
+                    style={{ top: (h - rangeStartMin / 60) * HOUR_H }}
+                  />
+                ))}
+
+                {DAYS.map((_, dayIdx) => (
+                  <div key={dayIdx} className="relative border-l border-cream/[0.06] first:border-l-0">
+                    {items
+                      .filter((it) => it.day_of_week === dayIdx)
+                      .map((it) => {
+                        const top = ((toMinutes(it.start_time) - rangeStartMin) / 60) * HOUR_H;
+                        const height = Math.max(
+                          20,
+                          ((toMinutes(it.end_time) - toMinutes(it.start_time)) / 60) * HOUR_H
+                        );
+                        const isEditing = editingId === it.id;
+                        return (
+                          <button
+                            key={it.id}
+                            onClick={() => startEdit(it)}
+                            className={`group absolute left-0.5 right-0.5 rounded-lg text-left px-2 py-1 overflow-hidden transition ${
+                              isEditing ? "ring-2 ring-marigold" : "hover:brightness-110"
+                            }`}
+                            style={{ top, height, background: `${it.color}30`, borderLeft: `3px solid ${it.color}` }}
+                          >
+                            <p className="text-[11px] font-semibold text-cream truncate leading-tight">{it.title}</p>
+                            {height > 34 && (
+                              <p className="text-[10px] text-cream/50 tabular-nums leading-tight">
+                                {it.start_time.slice(0, 5)}–{it.end_time.slice(0, 5)}
+                              </p>
+                            )}
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeItem(it.id);
+                              }}
+                              className="absolute top-0.5 right-1 text-[10px] text-cream/0 group-hover:text-cream/50 hover:!text-coral transition"
+                            >
+                              ✕
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

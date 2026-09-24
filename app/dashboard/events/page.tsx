@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import TimeField from "@/components/pickers/TimeField";
+import DateField from "@/components/pickers/DateField";
+import MinutesField from "@/components/pickers/MinutesField";
 
 type Status = "planning" | "confirmed";
 type EventItem = { id: string; title: string; done: boolean; position: number };
@@ -194,43 +197,10 @@ export default function EventsPage() {
               className="field w-full"
             />
           </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Date</label>
-            <input
-              type="date"
-              value={draft.event_date}
-              onChange={(e) => setDraft({ ...draft, event_date: e.target.value })}
-              className="field"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Start</label>
-            <input
-              type="time"
-              value={draft.start_time}
-              onChange={(e) => setDraft({ ...draft, start_time: e.target.value })}
-              className="field"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">End</label>
-            <input
-              type="time"
-              value={draft.end_time}
-              onChange={(e) => setDraft({ ...draft, end_time: e.target.value })}
-              className="field"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Remind (min before)</label>
-            <input
-              type="number"
-              min={0}
-              value={draft.remind}
-              onChange={(e) => setDraft({ ...draft, remind: Number(e.target.value) })}
-              className="field w-24"
-            />
-          </div>
+          <DateField label="Date" value={draft.event_date} onChange={(v) => setDraft({ ...draft, event_date: v })} />
+          <TimeField label="Start" value={draft.start_time} onChange={(v) => setDraft({ ...draft, start_time: v })} />
+          <TimeField label="End" value={draft.end_time} onChange={(v) => setDraft({ ...draft, end_time: v })} />
+          <MinutesField label="Remind" value={draft.remind} onChange={(v) => setDraft({ ...draft, remind: v })} />
         </div>
 
         <div className="mt-3 flex flex-wrap items-end gap-3">

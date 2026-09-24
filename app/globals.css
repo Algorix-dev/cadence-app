@@ -207,6 +207,14 @@ h3 {
   .row-out {
     animation: rowOut 0.22s ease forwards;
   }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {

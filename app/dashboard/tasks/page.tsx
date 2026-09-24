@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import TimeField from "@/components/pickers/TimeField";
+import DateField from "@/components/pickers/DateField";
+import MinutesField from "@/components/pickers/MinutesField";
 
 type Priority = "low" | "medium" | "high";
 type Task = {
@@ -11,7 +14,6 @@ type Task = {
   due_time: string | null;
   notes: string | null;
   priority: Priority;
-  category: string | null;
   done: boolean;
   remind_minutes_before: number;
 };
@@ -48,7 +50,6 @@ type Draft = {
   due_date: string;
   due_time: string;
   priority: Priority;
-  category: string;
   notes: string;
   remind: number;
 };
@@ -57,7 +58,6 @@ const emptyDraft = (remind = 60): Draft => ({
   due_date: todayISO(),
   due_time: "",
   priority: "medium",
-  category: "",
   notes: "",
   remind,
 });
@@ -128,7 +128,6 @@ export default function TasksPage() {
       due_date: t.due_date,
       due_time: t.due_time ?? "",
       priority: t.priority,
-      category: t.category ?? "",
       notes: t.notes ?? "",
       remind: t.remind_minutes_before,
     });
@@ -158,7 +157,6 @@ export default function TasksPage() {
       due_date: draft.due_date,
       due_time: draft.due_time || null,
       priority: draft.priority,
-      category: draft.category.trim() || null,
       notes: draft.notes.trim() || null,
       remind_minutes_before: draft.remind,
     };
@@ -233,43 +231,9 @@ export default function TasksPage() {
               className="field w-full"
             />
           </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Due date</label>
-            <input
-              type="date"
-              value={draft.due_date}
-              onChange={(e) => setDraft({ ...draft, due_date: e.target.value })}
-              className="field"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Due time</label>
-            <input
-              type="time"
-              value={draft.due_time}
-              onChange={(e) => setDraft({ ...draft, due_time: e.target.value })}
-              className="field"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Category</label>
-            <input
-              value={draft.category}
-              onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-              placeholder="CSC 201…"
-              className="field w-32"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-cream/50 mb-1">Remind (min before)</label>
-            <input
-              type="number"
-              min={0}
-              value={draft.remind}
-              onChange={(e) => setDraft({ ...draft, remind: Number(e.target.value) })}
-              className="field w-24"
-            />
-          </div>
+          <DateField label="Due date" value={draft.due_date} onChange={(v) => setDraft({ ...draft, due_date: v })} />
+          <TimeField label="Due time" value={draft.due_time} onChange={(v) => setDraft({ ...draft, due_time: v })} />
+          <MinutesField label="Remind" value={draft.remind} onChange={(v) => setDraft({ ...draft, remind: v })} />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -335,7 +299,6 @@ export default function TasksPage() {
                   <p className="text-xs text-cream/45 tabular-nums">
                     {dueLabel(t.due_date)}
                     {t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ""}
-                    {t.category ? ` · ${t.category}` : ""}
                   </p>
                 </div>
               </div>
